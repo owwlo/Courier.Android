@@ -11,8 +11,3 @@ public class BootUpReceiver extends BroadcastReceiver
     paramContext.startService(new Intent(paramContext, CourierSService.class));
   }
 }
-
-/* Location:           /home/owwlo/com.owwlo.courier.s-1.apk_FILES/classes_dex2jar.jar
- * Qualified Name:     com.owwlo.courier.s.BootUpReceiver
- * JD-Core Version:    0.6.2
- */

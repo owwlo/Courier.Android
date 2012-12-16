@@ -11,8 +11,3 @@ public class CourierSApp extends Application
     super.onCreate();
   }
 }
-
-/* Location:           /home/owwlo/com.owwlo.courier.s-1.apk_FILES/classes_dex2jar.jar
- * Qualified Name:     com.owwlo.courier.s.CourierSApp
- * JD-Core Version:    0.6.2
- */

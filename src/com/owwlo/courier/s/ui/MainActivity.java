@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -17,10 +18,14 @@ import com.owwlo.courier.s.CourierSService;
 import com.owwlo.courier.s.CourierSService.ServiceBinder;
 
 public class MainActivity extends Activity implements View.OnClickListener {
+    private static final String TAG = "CourierSMainActivity";
+
     private Context mContext;
     private CourierSService mCourierService;
     private CourierSService mService;
+
     private ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
         public void onServiceConnected(
                 ComponentName paramAnonymousComponentName,
                 IBinder paramAnonymousIBinder) {
@@ -30,10 +35,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     + mCourierService.getSystemTime());
         }
 
-        public void onServiceDisconnected(
-                ComponentName paramAnonymousComponentName) {
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
         }
     };
+
     private Button mStartServiceButton;
     private TextView mStateInfo;
     private Button mStopServiceButton;
@@ -45,6 +51,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         mStopServiceButton = ((Button) findViewById(R.id.btn_stop_service));
         mStartServiceButton.setOnClickListener(this);
         mStopServiceButton.setOnClickListener(this);
+
     }
 
     public void onClick(View paramView) {
@@ -64,5 +71,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
         super.onCreate(paramBundle);
         setContentView(R.layout.activity_main);
         initializeComponent();
+
+        bindService(new Intent(this, CourierSService.class), mServiceConnection, Context.BIND_AUTO_CREATE);
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        this.unbindService(mServiceConnection);
+    }
+
 }
