@@ -59,11 +59,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
             Intent localIntent1 = new Intent();
             localIntent1.setClass(this, CourierSService.class);
             mContext.startService(localIntent1);
+            Log.i(TAG, "start button pressed.");
         }
         if (paramView == mStopServiceButton) {
             Intent localIntent2 = new Intent();
             localIntent2.setClass(this, CourierSService.class);
             mContext.stopService(localIntent2);
+            Log.i(TAG, "stop button pressed.");
         }
     }
 

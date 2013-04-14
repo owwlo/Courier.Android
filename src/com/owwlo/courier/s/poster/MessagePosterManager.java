@@ -1,9 +1,7 @@
 package com.owwlo.courier.s.poster;
 
 import android.content.Context;
-import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 import java.net.Socket;
@@ -16,6 +14,7 @@ public class MessagePosterManager {
     private Context mContext;
     private HandlerThread mMessagePosterThread;
     private LinkedList<Poster> mPosterList;
+    private int mTcpListenPort;
 
     public MessagePosterManager(Context paramContext) {
         mContext = paramContext;
@@ -32,9 +31,20 @@ public class MessagePosterManager {
     }
 
     private void initData() {
+        mTcpListenPort = getIdleTcpPort();
+
         mMessagePosterThread = new HandlerThread(TAG);
         mMessagePosterThread.start();
         preparePoster(new SocketPoster(mContext));
+    }
+
+    // TODO get a free port for host listening
+    private int getIdleTcpPort() {
+        return 55837;
+    }
+
+    public int getTcpListeningPort() {
+        return mTcpListenPort;
     }
 
     private void preparePoster(Poster paramPoster) {
@@ -52,5 +62,10 @@ public class MessagePosterManager {
         for (Poster poster : mPosterList) {
             poster.sendMessage(msg);
         }
+    }
+
+    // TODO check if client is connected to host
+    public boolean isConnectedToHost() {
+        return false;
     }
 }
