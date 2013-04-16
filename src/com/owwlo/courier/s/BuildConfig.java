@@ -1,6 +1,5 @@
 package com.owwlo.courier.s;
 
-public final class BuildConfig
-{
-  public static final boolean DEBUG = true;
+public final class BuildConfig {
+    public static final boolean DEBUG = true;
 }
