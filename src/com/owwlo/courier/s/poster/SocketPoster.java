@@ -21,11 +21,14 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -36,14 +39,14 @@ import org.json.JSONObject;
 public class SocketPoster extends Poster {
     private static final String TAG = "CourierSSocketPoster";
 
-    private HashMap<Socket, ClientAnswerThread> mClientThreads;
+    private Map<Socket, ClientAnswerThread> mClientThreads;
     private Context mContext;
     private ServerSocket mServerSocket;
     private MessagePosterManager mMessagePosterManager = MessagePosterManager.getInstance();
 
     public SocketPoster(Context paramContext) {
         mContext = paramContext;
-        mClientThreads = new HashMap<Socket, ClientAnswerThread>();
+        mClientThreads = Collections.synchronizedMap(new HashMap<Socket, ClientAnswerThread>());
         try {
             mServerSocket = new ServerSocket(mMessagePosterManager.getTcpListeningPort());
         } catch (IOException localIOException) {
@@ -70,12 +73,34 @@ public class SocketPoster extends Poster {
                 Socket localSocket = mServerSocket.accept();
                 ClientAnswerThread localClientAnswerThread = new ClientAnswerThread(
                         mContext, localSocket);
+                localClientAnswerThread.addClientListener(new ClientListener(){
+
+                    @Override
+                    public void onClientConnecting() {
+
+                    }
+
+                    @Override
+                    public void onClientConnected() {
+                    }
+
+                    @Override
+                    public void onClientDisconnected() {
+                        //TODO 从mClientThreads删除当前Client链接
+                        checkIfLastExit();
+                    }
+                });
                 localClientAnswerThread.start();
                 mClientThreads.put(localSocket, localClientAnswerThread);
                 Log.i(TAG, "ConnectIn " + localSocket.toString());
             } catch (IOException localIOException) {
                 Log.w(TAG, "Accept incomming connection Failed.");
             }
+        }
+    }
+    private void checkIfLastExit() {
+        if (mClientThreads.values().size() == 0) {
+            notifyOnLastClientExit();
         }
     }
 
@@ -102,6 +127,7 @@ public class SocketPoster extends Poster {
         private PrintWriter mSender;
         private PublicKey mPublicKey;
         private SecretKey mAESKey;
+        private List<ClientListener> mPosterListener;
 
         private enum ClientConnectionState {
 
@@ -110,6 +136,7 @@ public class SocketPoster extends Poster {
         public ClientAnswerThread(Context paramSocket, Socket arg3) {
             mContext = paramSocket;
             mSocket = arg3;
+            mPosterListener = Collections.synchronizedList(new ArrayList<ClientListener>());
             try {
                 mSender = new PrintWriter(mSocket.getOutputStream());
             } catch (IOException e) {
@@ -264,6 +291,7 @@ public class SocketPoster extends Poster {
         }
 
         public void sendMessageToClient(JSONObject json) {
+            Log.d(TAG, "Going to send Json: " + json.toString());
             String strTobeSent = json.toString();
             if (encryptEnabled) {
                 // TODO Encrypt Scope
@@ -285,5 +313,27 @@ public class SocketPoster extends Poster {
             mSender.close();
             super.finalize();
         }
+
+        public void addClientListener(ClientListener listener) {
+            mPosterListener.add(listener);
+        }
+
+        public void removeClientListener(ClientListener listener) {
+            mPosterListener.remove(listener);
+        }
+    }
+
+    public static interface ClientListener {
+
+        public void onClientConnecting();
+
+        public void onClientConnected();
+
+        public void onClientDisconnected();
+    }
+
+    @Override
+    public int getConnectedNumber() {
+        return mClientThreads.values().size();
     }
 }

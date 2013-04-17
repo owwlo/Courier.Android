@@ -5,7 +5,10 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 
 public class MessagePosterManager {
     private static final String TAG = "CourierSMessagePosterManager";
@@ -15,10 +18,13 @@ public class MessagePosterManager {
     private HandlerThread mMessagePosterThread;
     private LinkedList<Poster> mPosterList;
     private int mTcpListenPort;
+    private List<PosterManagerListener> mPosterManagerListeners;
 
     public MessagePosterManager(Context paramContext) {
         mContext = paramContext;
         mPosterList = new LinkedList<Poster>();
+        mPosterManagerListeners =
+                Collections.synchronizedList(new ArrayList<PosterManagerListener>());
     }
 
     public static MessagePosterManager getInstance() {
@@ -54,6 +60,13 @@ public class MessagePosterManager {
                     Message paramAnonymousMessage) {
                 Log.i(MessagePosterManager.TAG, "There is Message Form PC!");
             }
+
+            @Override
+            public void onLastClientExit() {
+                for (PosterManagerListener listener : mPosterManagerListeners) {
+                    listener.onLastClientExit();
+                }
+            }
         });
         mPosterList.add(paramPoster);
     }
@@ -64,8 +77,24 @@ public class MessagePosterManager {
         }
     }
 
-    // TODO check if client is connected to host
     public boolean isConnectedToHost() {
+        for (Poster poster : mPosterList) {
+            if (poster.getConnectedNumber() > 0) {
+                return true;
+            }
+        }
         return false;
+    }
+
+    public static interface PosterManagerListener {
+        public abstract void onLastClientExit();
+    }
+
+    public void addPosterManagerListener(PosterManagerListener listener) {
+        mPosterManagerListeners.add(listener);
+    }
+
+    public void removePosterManagerListener(PosterManagerListener listener) {
+        mPosterManagerListeners.remove(listener);
     }
 }

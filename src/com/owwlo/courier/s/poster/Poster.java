@@ -6,11 +6,11 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 public abstract class Poster implements Runnable {
-    private LinkedList<PosterListener> mPosterListeners = new LinkedList();
+    private LinkedList<PosterListener> mPosterListeners = new LinkedList<PosterListener>();
 
-    private void notifyOnReceiveMessageFromClient(Socket paramSocket,
+    protected void notifyOnReceiveMessageFromClient(Socket paramSocket,
             Message paramMessage) {
-        Iterator localIterator = mPosterListeners.iterator();
+        Iterator<PosterListener> localIterator = mPosterListeners.iterator();
         while (true) {
             if (!localIterator.hasNext())
                 return;
@@ -18,6 +18,14 @@ public abstract class Poster implements Runnable {
                     paramSocket, paramMessage);
         }
     }
+
+    protected void notifyOnLastClientExit() {
+        for (PosterListener listener : mPosterListeners) {
+            listener.onLastClientExit();
+        }
+    }
+
+    public abstract int getConnectedNumber();
 
     public void addPosterListener(PosterListener paramPosterListener) {
         mPosterListeners.add(paramPosterListener);
@@ -34,10 +42,6 @@ public abstract class Poster implements Runnable {
     public static abstract interface PosterListener {
         public abstract void OnReceiveMessageFromClient(Socket paramSocket,
                 Message paramMessage);
+        public abstract void onLastClientExit();
     }
 }
-
-/*
- * Location: /home/owwlo/com.owwlo.courier.s-1.apk_FILES/classes_dex2jar.jar
- * Qualified Name: com.owwlo.courier.s.poster.Poster JD-Core Version: 0.6.2
- */

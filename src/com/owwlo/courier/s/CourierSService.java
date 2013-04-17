@@ -95,18 +95,17 @@ public class CourierSService extends Service {
     }
 
     public boolean onUnbind(Intent paramIntent) {
-        Log.i("CourierSService", "start onUnbind~~~");
         return super.onUnbind(paramIntent);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "On receive command.");
-        if (mLastAddress  == null || mLastAddress != getLocalIPAddress().get(0)) {
-            generateAuthCode();
-        }
         if (CourierUtils.isLocalNetConnected(this) &&
                 !mMessagePosterManager.isConnectedToHost()) {
+            if (mLastAddress  == null || mLastAddress != getLocalIPAddress().get(0)) {
+                generateAuthCode();
+            }
             try{
                 mBroadcastTimer.scheduleAtFixedRate(mBroadcastTimerTask,
                         0, Constants.BROADCAST_DELAY_TIME);
@@ -121,11 +120,19 @@ public class CourierSService extends Service {
         Log.i(TAG, "Generate AuthCode.");
         InetAddress ip = getLocalIPAddress().get(0);
         byte[] ipBytes = ip.getAddress();
-        String.vaipBytes[ipBytes.length - 2] + ipBytes[ipBytes.length - 1]
-        QString ipId = QString::number(ip, 16);
-        ipId = ipId.right(2);
-        QString imxiId = info.imxi.right(4).left(2);
-        return (ipId + imxiId);
+        String ipHex = Utils.byteArrayToHexString(ipBytes);
+        String ipPart = ipHex.substring(ipHex.length()-2);
+        String imxi = getIMXI();
+        if (TextUtils.isEmpty(imxi) || imxi.length() <= 4) {
+            imxi = "d92c";		// Magic Code!
+        }
+        String imxiPart = imxi.substring(imxi.length() - 4, imxi.length() - 2);
+        AUTH_CODE = ipPart.substring(0, 1).toUpperCase()
+                + Utils.generateRandomAuthChar()
+                + ipPart.substring(1, 2).toUpperCase()
+                + Utils.generateRandomAuthChar()
+                + imxiPart;
+        Log.d(TAG, "AuthCode: " + AUTH_CODE);
     }
 
     public class ServiceBinder extends Binder {
@@ -138,7 +145,6 @@ public class CourierSService extends Service {
 
         @Override
         protected Void doInBackground(Void... params) {
-            //Log.i(TAG, getLocalIPAddress().toArray().toString());
             List<InetAddress> ipList = getLocalIPAddress();
             broadcastMessage(ipList);
             return null;
@@ -189,17 +195,6 @@ public class CourierSService extends Service {
             }
             return json;
         }
-
-        private String getIMXI() {
-            TelephonyManager tm = (TelephonyManager)
-                    CourierSService.this.getApplicationContext()
-                    .getSystemService(Context.TELEPHONY_SERVICE);
-            String deviceId = tm.getDeviceId();
-            if (TextUtils.isEmpty(deviceId)) {
-                deviceId = "";
-            }
-            return deviceId;
-        }
     }
 
     private ArrayList<InetAddress> getLocalIPAddress() {
@@ -221,5 +216,16 @@ public class CourierSService extends Service {
             Log.e(TAG, ex.toString());
         }
         return ipList;
+    }
+
+    private String getIMXI() {
+        TelephonyManager tm = (TelephonyManager)
+                CourierSService.this.getApplicationContext()
+                .getSystemService(Context.TELEPHONY_SERVICE);
+        String deviceId = tm.getDeviceId();
+        if (TextUtils.isEmpty(deviceId)) {
+            deviceId = "";
+        }
+        return deviceId;
     }
 }
