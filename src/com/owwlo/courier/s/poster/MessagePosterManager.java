@@ -79,7 +79,7 @@ public class MessagePosterManager {
 
     public boolean isConnectedToHost() {
         for (Poster poster : mPosterList) {
-            if (poster.getConnectedNumber() > 0) {
+            if (poster.getConnectedCount() > 0) {
                 return true;
             }
         }

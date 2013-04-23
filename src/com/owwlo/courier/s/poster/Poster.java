@@ -25,7 +25,7 @@ public abstract class Poster implements Runnable {
         }
     }
 
-    public abstract int getConnectedNumber();
+    public abstract int getConnectedCount();
 
     public void addPosterListener(PosterListener paramPosterListener) {
         mPosterListeners.add(paramPosterListener);

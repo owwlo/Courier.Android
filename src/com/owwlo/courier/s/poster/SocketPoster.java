@@ -42,13 +42,16 @@ public class SocketPoster extends Poster {
     private Map<Socket, ClientAnswerThread> mClientThreads;
     private Context mContext;
     private ServerSocket mServerSocket;
-    private MessagePosterManager mMessagePosterManager = MessagePosterManager.getInstance();
+    private MessagePosterManager mMessagePosterManager = MessagePosterManager
+            .getInstance();
 
     public SocketPoster(Context paramContext) {
         mContext = paramContext;
-        mClientThreads = Collections.synchronizedMap(new HashMap<Socket, ClientAnswerThread>());
+        mClientThreads = Collections
+                .synchronizedMap(new HashMap<Socket, ClientAnswerThread>());
         try {
-            mServerSocket = new ServerSocket(mMessagePosterManager.getTcpListeningPort());
+            mServerSocket = new ServerSocket(
+                    mMessagePosterManager.getTcpListeningPort());
         } catch (IOException localIOException) {
             Log.w(TAG, "SocketPoster create failed.");
         }
@@ -67,13 +70,12 @@ public class SocketPoster extends Poster {
 
     @Override
     public void run() {
-        while (true)
-        {
+        while (true) {
             try {
                 Socket localSocket = mServerSocket.accept();
                 ClientAnswerThread localClientAnswerThread = new ClientAnswerThread(
                         mContext, localSocket);
-                localClientAnswerThread.addClientListener(new ClientListener(){
+                localClientAnswerThread.addClientListener(new ClientListener() {
 
                     @Override
                     public void onClientConnecting() {
@@ -86,7 +88,7 @@ public class SocketPoster extends Poster {
 
                     @Override
                     public void onClientDisconnected() {
-                        //TODO 从mClientThreads删除当前Client链接
+                        // TODO 从mClientThreads删除当前Client链接
                         checkIfLastExit();
                     }
                 });
@@ -98,6 +100,7 @@ public class SocketPoster extends Poster {
             }
         }
     }
+
     private void checkIfLastExit() {
         if (mClientThreads.values().size() == 0) {
             notifyOnLastClientExit();
@@ -136,7 +139,8 @@ public class SocketPoster extends Poster {
         public ClientAnswerThread(Context paramSocket, Socket arg3) {
             mContext = paramSocket;
             mSocket = arg3;
-            mPosterListener = Collections.synchronizedList(new ArrayList<ClientListener>());
+            mPosterListener = Collections
+                    .synchronizedList(new ArrayList<ClientListener>());
             try {
                 mSender = new PrintWriter(mSocket.getOutputStream());
             } catch (IOException e) {
@@ -161,35 +165,40 @@ public class SocketPoster extends Poster {
         }
 
         public void run() {
+            BufferedReader br = null;
             try {
-                BufferedReader localBufferedReader = new BufferedReader(
-                        new InputStreamReader(mSocket.getInputStream(), "UTF-8"));
-                StringBuilder localStringBuilder = new StringBuilder();
+                br = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
+                String l;
                 while (true) {
-                    if (localBufferedReader.readLine() == null) {
-                        Log.i(TAG, "Receive String: " + localStringBuilder);
-                        processMessage(localStringBuilder.toString());
-                        break;
+                    if ((l = br.readLine()) != null) {
+                        Log.i(TAG, "Receive String: " + l);
+                        processMessage(l);
                     }
-                    localStringBuilder.append(localBufferedReader.readLine());
                 }
-            } catch (IOException localIOException) {
-                localIOException.printStackTrace();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            } finally {
+                if(br != null) {
+                    try {
+                        br.close();
+                    } catch (IOException e) {
+                    }
+                }
             }
         }
 
         private void processMessage(String string) {
+            try {
+                string = new String(Base64.decode(string.getBytes("UTF-8"),
+                        Base64.DEFAULT));
+            } catch (UnsupportedEncodingException e) {
+                return;
+            }
             if (!string.startsWith(Constants.COURIER_JSON_HEADER)) {
                 return;
             }
             string = string.substring(Constants.COURIER_JSON_HEADER.length());
-            try {
-                string = String.valueOf(Base64.decode(string.getBytes("UTF-8"),
-                        Base64.DEFAULT));
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-                return;
-            }
+
             if (encryptEnabled) {
                 // TODO Decrypt Scope
             }
@@ -218,7 +227,8 @@ public class SocketPoster extends Poster {
                 String publicKeyPEM = json.optString(Constants.JSON_VALUE);
                 Log.d(TAG, "Got Public Key in PEM format: " + publicKeyPEM);
                 String[] linesArray = publicKeyPEM.split("\n");
-                List<String> lines = new LinkedList<String>(Arrays.asList(linesArray));
+                List<String> lines = new LinkedList<String>(
+                        Arrays.asList(linesArray));
                 if (lines.size() > 1 && lines.get(0).startsWith("-----")
                         && lines.get(lines.size() - 1).startsWith("-----")) {
                     lines.remove(0);
@@ -231,7 +241,7 @@ public class SocketPoster extends Poster {
                 for (String aLine : lines)
                     sb.append(aLine);
                 String keyString = sb.toString();
-                Log.d("log", "keyString: "+keyString);
+                Log.d("log", "keyString: " + keyString);
                 byte[] keyBytes;
                 try {
                     keyBytes = Base64.decode(keyString.getBytes("utf-8"),
@@ -259,13 +269,13 @@ public class SocketPoster extends Poster {
 
         private JSONObject getSecureKeyJSON() {
             JSONObject json = new JSONObject();
-            String keyValue = String.valueOf(
-                    Base64.encode(mAESKey.getEncoded(), Base64.DEFAULT));
+            String keyValue = new String(Base64.encode(
+                    mAESKey.getEncoded(), Base64.DEFAULT));
             try {
                 json.put(Constants.JSON_TYPE, Constants.JSON_TYPE_AES_KEY);
                 json.put(Constants.JSON_VALUE, keyValue);
             } catch (JSONException e) {
-                //不会执行到这里
+                // 不会执行到这里
                 e.printStackTrace();
             }
             return json;
@@ -279,7 +289,7 @@ public class SocketPoster extends Poster {
                 kg.init(256, secureRandom);
                 return kg.generateKey();
             } catch (NoSuchAlgorithmException e) {
-                //不会执行到这里
+                // 不会执行到这里
                 e.printStackTrace();
             }
             return null;
@@ -301,6 +311,7 @@ public class SocketPoster extends Poster {
             try {
                 data = strTobeSent.getBytes("UTF-8");
                 String base64 = Base64.encodeToString(data, Base64.DEFAULT);
+                Log.i(TAG, "Base64 String: " + base64);
                 mSender.println(base64);
                 mSender.flush();
             } catch (UnsupportedEncodingException e) {
@@ -333,7 +344,7 @@ public class SocketPoster extends Poster {
     }
 
     @Override
-    public int getConnectedNumber() {
+    public int getConnectedCount() {
         return mClientThreads.values().size();
     }
 }

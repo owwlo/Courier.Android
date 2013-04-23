@@ -1,6 +1,6 @@
 package com.owwlo.courier.s;
 
-import com.owwlo.courier.s.utils.CourierUtils;
+import com.owwlo.courier.s.utils.Utils;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -12,7 +12,7 @@ public class ConnectivityReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if(CourierUtils.isLocalNetConnected(context)) {
+        if(Utils.isLocalNetConnected(context)) {
             Intent broadcastIntent = new Intent(context, CourierSService.class);
             broadcastIntent.putExtra(
                     CourierSService.EXTRA_ACTION, CourierSService.BROADCAST_HELLO_MESSAGE);

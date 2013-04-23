@@ -34,7 +34,7 @@ import android.util.Log;
 
 import com.owwlo.courier.s.Constants.SMS;
 import com.owwlo.courier.s.poster.MessagePosterManager;
-import com.owwlo.courier.s.utils.CourierUtils;
+import com.owwlo.courier.s.utils.Utils;
 
 public class CourierSService extends Service {
     private static final String TAG = "CourierSService";
@@ -101,7 +101,7 @@ public class CourierSService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "On receive command.");
-        if (CourierUtils.isLocalNetConnected(this) &&
+        if (Utils.isLocalNetConnected(this) &&
                 !mMessagePosterManager.isConnectedToHost()) {
             if (mLastAddress  == null || mLastAddress != getLocalIPAddress().get(0)) {
                 generateAuthCode();
@@ -159,8 +159,8 @@ public class CourierSService extends Service {
                 String message = Constants.COURIER_JSON_HEADER
                         + buildMessageJSON().toString();
                 byte[] data = message.getBytes("UTF-8");
+                Log.i(TAG, "Broadcast Message: " + message);
                 String base64 = Base64.encodeToString(data, Base64.DEFAULT);
-                Log.i(TAG, "Broadcast Message: " + base64);
                 DatagramPacket packet = new DatagramPacket(base64.getBytes(),
                         base64.getBytes().length);
                 InetAddress broadcastAddr = InetAddress.getByName("255.255.255.255");

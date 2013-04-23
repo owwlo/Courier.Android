@@ -1,6 +1,10 @@
-package com.owwlo.courier.s;
+package com.owwlo.courier.s.utils;
 
 import java.util.Random;
+
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 
 public class Utils {
     private static final String TAG = Utils.class.getSimpleName();
@@ -24,5 +28,15 @@ public class Utils {
         } else {
             return (char) ('A' + pickIndex - 10);
         }
+    }
+
+    public static boolean isLocalNetConnected(Context context) {
+        ConnectivityManager manager =
+                (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = manager.getActiveNetworkInfo();
+        return networkInfo != null &&
+                (networkInfo.getType() == ConnectivityManager.TYPE_BLUETOOTH
+                || networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET
+                || networkInfo.getType() == ConnectivityManager.TYPE_WIFI);
     }
 }
