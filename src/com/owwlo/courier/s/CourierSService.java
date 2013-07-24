@@ -31,6 +31,7 @@ import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Base64;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.owwlo.courier.s.Constants.SMS;
 import com.owwlo.courier.s.poster.MessagePosterManager;
@@ -82,7 +83,7 @@ public class CourierSService extends Service {
         mMessagePosterManager = MessagePosterManager.getInstance();
         addSMSObserver();
 
-        mBroadcastTimerTask = new TimerTask(){
+        mBroadcastTimerTask = new TimerTask() {
             @Override
             public void run() {
                 if (mMessagePosterManager.isConnectedToHost()) {
@@ -101,14 +102,15 @@ public class CourierSService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "On receive command.");
-        if (Utils.isLocalNetConnected(this) &&
-                !mMessagePosterManager.isConnectedToHost()) {
-            if (mLastAddress  == null || mLastAddress != getLocalIPAddress().get(0)) {
+        if (Utils.isLocalNetConnected(this)
+                && !mMessagePosterManager.isConnectedToHost()) {
+            if (mLastAddress == null
+                    || mLastAddress != getLocalIPAddress().get(0)) {
                 generateAuthCode();
             }
-            try{
-                mBroadcastTimer.scheduleAtFixedRate(mBroadcastTimerTask,
-                        0, Constants.BROADCAST_DELAY_TIME);
+            try {
+                mBroadcastTimer.scheduleAtFixedRate(mBroadcastTimerTask, 0,
+                        Constants.BROADCAST_DELAY_TIME);
             } catch (Exception e) {
                 Log.e(TAG, "schedule failed.");
             }
@@ -121,18 +123,19 @@ public class CourierSService extends Service {
         InetAddress ip = getLocalIPAddress().get(0);
         byte[] ipBytes = ip.getAddress();
         String ipHex = Utils.byteArrayToHexString(ipBytes);
-        String ipPart = ipHex.substring(ipHex.length()-2);
+        String ipPart = ipHex.substring(ipHex.length() - 2);
         String imxi = getIMXI();
         if (TextUtils.isEmpty(imxi) || imxi.length() <= 4) {
-            imxi = "d92c";		// Magic Code!
+            imxi = "d92c"; // Magic Code!
         }
         String imxiPart = imxi.substring(imxi.length() - 4, imxi.length() - 2);
         AUTH_CODE = ipPart.substring(0, 1).toUpperCase()
                 + Utils.generateRandomAuthChar()
                 + ipPart.substring(1, 2).toUpperCase()
-                + Utils.generateRandomAuthChar()
-                + imxiPart;
+                + Utils.generateRandomAuthChar() + imxiPart;
         Log.d(TAG, "AuthCode: " + AUTH_CODE);
+        Toast.makeText(getApplicationContext(), AUTH_CODE, Toast.LENGTH_SHORT)
+                .show();
     }
 
     public class ServiceBinder extends Binder {
@@ -163,7 +166,8 @@ public class CourierSService extends Service {
                 String base64 = Base64.encodeToString(data, Base64.DEFAULT);
                 DatagramPacket packet = new DatagramPacket(base64.getBytes(),
                         base64.getBytes().length);
-                InetAddress broadcastAddr = InetAddress.getByName("255.255.255.255");
+                InetAddress broadcastAddr = InetAddress
+                        .getByName("255.255.255.255");
                 packet.setAddress(broadcastAddr);
                 packet.setPort(Constants.BROADCAST_PORT);
                 socket.send(packet);
@@ -177,7 +181,7 @@ public class CourierSService extends Service {
                 Log.d(TAG, "Broadcast packet sent failed.");
                 e.printStackTrace();
             } finally {
-                if(socket != null) {
+                if (socket != null) {
                     socket.close();
                 }
             }
@@ -185,7 +189,7 @@ public class CourierSService extends Service {
 
         private JSONObject buildMessageJSON() {
             int port = mMessagePosterManager.getTcpListeningPort();
-            String imxi = getIMXI();					//imxi could be ""
+            String imxi = getIMXI(); // imxi could be ""
             JSONObject json = new JSONObject();
             try {
                 json.put(Constants.JSON_PORT, port);
@@ -206,8 +210,8 @@ public class CourierSService extends Service {
                 for (Enumeration<InetAddress> enumIpAddr = intf
                         .getInetAddresses(); enumIpAddr.hasMoreElements();) {
                     InetAddress inetAddress = enumIpAddr.nextElement();
-                    if (!inetAddress.isLoopbackAddress()	// TODO 暂时只支持IPv4协议
-                            && inetAddress instanceof Inet4Address ) {
+                    if (!inetAddress.isLoopbackAddress() // TODO 暂时只支持IPv4协议
+                            && inetAddress instanceof Inet4Address) {
                         ipList.add(inetAddress);
                     }
                 }
@@ -219,9 +223,9 @@ public class CourierSService extends Service {
     }
 
     private String getIMXI() {
-        TelephonyManager tm = (TelephonyManager)
-                CourierSService.this.getApplicationContext()
-                .getSystemService(Context.TELEPHONY_SERVICE);
+        TelephonyManager tm = (TelephonyManager) CourierSService.this
+                .getApplicationContext().getSystemService(
+                        Context.TELEPHONY_SERVICE);
         String deviceId = tm.getDeviceId();
         if (TextUtils.isEmpty(deviceId)) {
             deviceId = "";

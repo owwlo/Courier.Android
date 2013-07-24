@@ -10,6 +10,9 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * 在CourierSService的OnCreate函数中初始化
+ */
 public class MessagePosterManager {
     private static final String TAG = "CourierSMessagePosterManager";
 
