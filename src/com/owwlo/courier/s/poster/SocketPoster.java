@@ -1,13 +1,17 @@
 package com.owwlo.courier.s.poster;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.os.Message;
 import android.util.Base64;
 import android.util.Log;
 
+import com.owwlo.courier.db.CourierDatabaseHelper.ERROR_DETECT;
 import com.owwlo.courier.s.Constants;
 import com.owwlo.courier.s.Constants.SMS;
+import com.owwlo.courier.s.data.Contact;
 import com.owwlo.courier.s.data.MessageItem;
+import com.owwlo.courier.s.data.MessagePack;
 import com.owwlo.courier.s.utils.Utils;
 
 import java.io.BufferedReader;
@@ -44,6 +48,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -94,7 +99,12 @@ public class SocketPoster extends Poster {
                     }
 
                     @Override
-                    public void onClientConnected() {
+                    public void onClientConnected(ClientAnswerThread cat) {
+                        ContentValues values = new ContentValues();
+                        values.put(ERROR_DETECT.IP, cat.getSocket().getRemoteSocketAddress().toString());
+                        values.put(ERROR_DETECT.CONNECT_TIME, System.currentTimeMillis());
+                        mContext.getContentResolver().insert(Constants.URI_LAST_CONNECT, values);
+
                     }
 
                     @Override
@@ -153,6 +163,10 @@ public class SocketPoster extends Poster {
             Connected, WaitingForPublicKey
         }
 
+        public final Socket getSocket() {
+            return mSocket;
+        }
+
         public ClientAnswerThread(Context paramSocket, Socket arg3) {
             mContext = paramSocket;
             mSocket = arg3;
@@ -186,10 +200,44 @@ public class SocketPoster extends Poster {
             mConnectionState = ClientConnectionState.WaitingForPublicKey;
         }
 
+        private JSONObject getJSON(MessagePack pack) {
+            JSONObject json = new JSONObject();
+            try {
+                json.put(Constants.JSON_TYPE, Constants.JSON_MESSAGE_PACK);
+                json.put(Constants.JSON_MSG_PACK_SENDER, pack.senderAddress);
+                json.put(Constants.JSON_MSG_PACK_THREAD_ID, pack.senderThreadId);
+
+                long personId = Utils.getContactInfoFormPhone(mContext,
+                        pack.senderAddress).mPersonId;
+                json.put(Constants.JSON_MSG_PACK_SENDER_ID, personId);
+
+                JSONArray msgArray = new JSONArray();
+                Map<Long, Contact> contactMap = new HashMap<Long, Contact>();
+                for (MessageItem item : pack.getMessageList()) {
+                    msgArray.put(getJSON(item));
+                    contactMap.put(item.getContact().mPersonId,
+                            item.getContact());
+                }
+
+                JSONObject imageJson = new JSONObject();
+                for (long pId : contactMap.keySet()) {
+                    imageJson.put(String.valueOf(pId), Utils
+                            .encodeImageTobase64(contactMap.get(pId).getImage(
+                                    mContext)));
+                }
+
+                json.put(Constants.JSON_MSG_PACK_MSG_ARRAY, msgArray);
+                json.put(Constants.JSON_MSG_PACK_IMG_ARRAY, imageJson);
+            } catch (JSONException e1) {
+                e1.printStackTrace();
+            }
+            return json;
+        }
+
         private JSONObject getJSON(MessageItem sms) {
             JSONObject json = new JSONObject();
             try {
-                json.put(Constants.JSON_TYPE,Constants.JSON_MESSAGE);
+                json.put(Constants.JSON_TYPE, Constants.JSON_MESSAGE);
                 json.put(SMS.ADDRESS, sms.getAddress());
                 json.put(SMS.BODY, sms.getBody());
                 json.put(SMS.DATE, sms.getDate());
@@ -202,6 +250,12 @@ public class SocketPoster extends Poster {
                 json.put(SMS.STATUS, sms.getStatus());
                 json.put(SMS.THREAD_ID, sms.getThreadId());
                 json.put(SMS.TYPE, sms.getType());
+                json.put(SMS.PERSON, sms.getContact().mPersonId);
+
+                if (sms.getUserImage() != null) {
+                    json.put(SMS.USER_IMAGE,
+                            Utils.encodeImageTobase64(sms.getUserImage()));
+                }
             } catch (JSONException e) {
                 // 不会执行到这里
                 e.printStackTrace();
@@ -210,6 +264,10 @@ public class SocketPoster extends Poster {
         }
 
         public void run() {
+            for (ClientListener cl : mPosterListener) {
+                cl.onClientConnected(this);
+            }
+
             BufferedReader br = null;
             try {
                 br = new BufferedReader(new InputStreamReader(
@@ -247,8 +305,9 @@ public class SocketPoster extends Poster {
 
             if (encryptEnabled) {
                 try {
-                    //byte[] enCodeFormat = mAESKey.getEncoded();
-                    //SecretKeySpec key = new SecretKeySpec(enCodeFormat, "AES");
+                    // byte[] enCodeFormat = mAESKey.getEncoded();
+                    // SecretKeySpec key = new SecretKeySpec(enCodeFormat,
+                    // "AES");
                     Cipher cipher = Cipher.getInstance("AES");
                     cipher.init(Cipher.DECRYPT_MODE, mAESKey);
                     byte[] result = cipher.doFinal(string.getBytes("utf-8"));
@@ -372,7 +431,7 @@ public class SocketPoster extends Poster {
 
         private JSONObject getSecureKeyJSON() {
             JSONObject json = new JSONObject();
-            //byte[] aesKeyBytes = mAESKey.getEncoded();
+            // byte[] aesKeyBytes = mAESKey.getEncoded();
             byte[] aesKeyBytes = null;
             try {
                 aesKeyBytes = "owwlo".getBytes("utf-8");
@@ -380,32 +439,35 @@ public class SocketPoster extends Poster {
                 // TODO Auto-generated catch block
                 e2.printStackTrace();
             }
-            Log.d(TAG, "AES key: " + new String(Base64.encode(aesKeyBytes, Base64.NO_WRAP)));
+            Log.d(TAG,
+                    "AES key: "
+                            + new String(Base64.encode(aesKeyBytes,
+                                    Base64.NO_WRAP)));
             KeyFactory keyFactory;
             try {
                 keyFactory = KeyFactory.getInstance("RSA");
                 Cipher cipher = Cipher.getInstance(keyFactory.getAlgorithm());
                 cipher.init(Cipher.ENCRYPT_MODE, mPublicKey);
-//                int inputLen = aesKeyBytes.length;
-//                ByteArrayOutputStream out = new ByteArrayOutputStream();
-//                int offSet = 0;
-//                byte[] cache;
-//                int i = 0;
-//                // 对数据分段加密
-//                while (inputLen - offSet > 0) {
-//                    if (inputLen - offSet > MAX_ENCRYPT_BLOCK) {
-//                        cache = cipher.doFinal(aesKeyBytes, offSet,
-//                                MAX_ENCRYPT_BLOCK);
-//                    } else {
-//                        cache = cipher.doFinal(aesKeyBytes, offSet, inputLen
-//                                - offSet);
-//                    }
-//                    out.write(cache, 0, cache.length);
-//                    i++;
-//                    offSet = i * MAX_ENCRYPT_BLOCK;
-//                }
-//                byte[] encryptedData = out.toByteArray();
-//                out.close();
+                // int inputLen = aesKeyBytes.length;
+                // ByteArrayOutputStream out = new ByteArrayOutputStream();
+                // int offSet = 0;
+                // byte[] cache;
+                // int i = 0;
+                // // 对数据分段加密
+                // while (inputLen - offSet > 0) {
+                // if (inputLen - offSet > MAX_ENCRYPT_BLOCK) {
+                // cache = cipher.doFinal(aesKeyBytes, offSet,
+                // MAX_ENCRYPT_BLOCK);
+                // } else {
+                // cache = cipher.doFinal(aesKeyBytes, offSet, inputLen
+                // - offSet);
+                // }
+                // out.write(cache, 0, cache.length);
+                // i++;
+                // offSet = i * MAX_ENCRYPT_BLOCK;
+                // }
+                // byte[] encryptedData = out.toByteArray();
+                // out.close();
                 byte[] encryptedData = cipher.doFinal(aesKeyBytes);
                 try {
                     json.put(Constants.JSON_TYPE, Constants.JSON_TYPE_AES_KEY);
@@ -451,7 +513,11 @@ public class SocketPoster extends Poster {
 
         public void sendMessageToClient(Message paramMessage) {
             Log.i(TAG, "send Message to Client " + mSocket.toString());
-            sendMessageToClient(getJSON((MessageItem) paramMessage.obj));
+            if (paramMessage.obj instanceof MessageItem) {
+                sendMessageToClient(getJSON((MessageItem) paramMessage.obj));
+            } else if (paramMessage.obj instanceof MessagePack) {
+                sendMessageToClient(getJSON((MessagePack) paramMessage.obj));
+            }
         }
 
         public void sendMessageToClient(JSONObject json) {
@@ -463,8 +529,8 @@ public class SocketPoster extends Poster {
                 // 不会执行
             }
             if (encryptEnabled) {
-                //byte[] enCodeFormat = mAESKey.getEncoded();
-                //SecretKeySpec key = new SecretKeySpec(enCodeFormat, "AES");
+                // byte[] enCodeFormat = mAESKey.getEncoded();
+                // SecretKeySpec key = new SecretKeySpec(enCodeFormat, "AES");
                 Cipher cipher;
                 try {
                     cipher = Cipher.getInstance("AES/CBC/PKCS7Padding");
@@ -479,7 +545,7 @@ public class SocketPoster extends Poster {
                 } catch (InvalidKeyException e) {
                     e.printStackTrace();
                 } catch (IllegalBlockSizeException e) {
-                    //PKCS5Padding对齐方法防止这种情况产生
+                    // PKCS5Padding对齐方法防止这种情况产生
                     e.printStackTrace();
                 } catch (BadPaddingException e) {
                     // 不会执行到这里
@@ -494,8 +560,7 @@ public class SocketPoster extends Poster {
                         .getBytes("utf-8");
                 byte[] data = new byte[bytesTobeSent.length
                         + headerBytes.length];
-                System.arraycopy(headerBytes, 0, data, 0,
-                        headerBytes.length);
+                System.arraycopy(headerBytes, 0, data, 0, headerBytes.length);
                 System.arraycopy(bytesTobeSent, 0, data, headerBytes.length,
                         bytesTobeSent.length);
                 String base64 = Base64.encodeToString(data, Base64.NO_WRAP);
@@ -510,6 +575,9 @@ public class SocketPoster extends Poster {
         @Override
         protected void finalize() throws Throwable {
             mSender.close();
+            for (ClientListener cl : mPosterListener) {
+                cl.onClientDisconnected();
+            }
             super.finalize();
         }
 
@@ -526,7 +594,7 @@ public class SocketPoster extends Poster {
 
         public void onClientConnecting();
 
-        public void onClientConnected();
+        public void onClientConnected(ClientAnswerThread cat);
 
         public void onClientDisconnected();
     }

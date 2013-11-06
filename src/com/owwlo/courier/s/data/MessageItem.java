@@ -2,19 +2,42 @@ package com.owwlo.courier.s.data;
 
 import java.io.Serializable;
 
+import com.owwlo.courier.s.CourierSApp;
+import com.owwlo.courier.s.CourierSService;
+import com.owwlo.courier.s.utils.Utils;
+
+import android.graphics.Bitmap;
+
 public class MessageItem implements Serializable {
     private String address;
     private String body;
     private long date;
     private long dateSent;
     private int deleted;
-    private int id;
+    private long id;
     private int protocol;
     private int read;
     private int seen;
     private int status;
     private int threadId;
     private int type;
+    private Bitmap userImage = null;
+    private Contact contact = null;
+
+    public Contact getContact() {
+        if (contact == null) {
+            contact = Utils.getContactInfoFormPhone(CourierSService.sContext, address);
+        }
+        return contact;
+    }
+
+    public Bitmap getUserImage() {
+        return userImage;
+    }
+
+    public void setUserImage(Bitmap userImage) {
+        this.userImage = userImage;
+    }
 
     public String toString() {
         return "MessageItem [id=" + id + ", threadId=" + threadId
@@ -64,11 +87,11 @@ public class MessageItem implements Serializable {
         this.deleted = deleted;
     }
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(long id) {
         this.id = id;
     }
 

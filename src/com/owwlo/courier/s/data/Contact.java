@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.owwlo.courier.R;
+import com.owwlo.courier.s.Constants;
+import com.owwlo.courier.s.utils.Utils;
 
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -23,22 +25,29 @@ public class Contact {
     public Contact() {
         phones = new ArrayList<String>();
     }
+
     public final List<String> getPhones() {
         return phones;
     }
+
     public void addPhone(String phone) {
         phones.add(phone);
     }
+
     public Bitmap getImage(Context mContext) {
-        Bitmap contactPhoto;
+        Bitmap contactPhoto = null;
         ContentResolver resolver = mContext.getContentResolver();
-        if(mPhotoId > 0 && mPersonId > 0) {
-            Uri uri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI,mPersonId);
-            InputStream input = ContactsContract.Contacts.openContactPhotoInputStream(resolver, uri);
+        if (mPersonId > 0) {
+            Uri uri = ContentUris.withAppendedId(
+                    ContactsContract.Contacts.CONTENT_URI, mPersonId);
+            InputStream input = ContactsContract.Contacts
+                    .openContactPhotoInputStream(resolver, uri);
             contactPhoto = BitmapFactory.decodeStream(input);
-        }else {
-            contactPhoto = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.default_contact_photo);
         }
-        return contactPhoto;
+        if (contactPhoto == null) {
+            contactPhoto = BitmapFactory.decodeResource(
+                    mContext.getResources(), R.drawable.default_contact_photo);
+        }
+        return Utils.getRoundedCornerBitmap(contactPhoto);
     }
 }
