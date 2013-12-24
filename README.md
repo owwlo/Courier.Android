@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# Courier Project by owwlo
-=======
-courier.android
-===============
->>>>>>> 7f2f22ab2248822ec31b625393b84af4233bbaaa
+#Courier Project
+##What is Courier
+Courier is an project which enable remotely Message Replying and New Message Notification for android smart phone.
